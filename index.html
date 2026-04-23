@@ -110,8 +110,11 @@
         /* Topology Visualizer Styles */
         .topology-wrapper { background: var(--panel-bg); border-radius: 8px; border: 1px solid var(--panel-light); margin-top: 0; display: flex; flex-direction: column;}
         .topology-header { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; border-bottom: 1px solid var(--panel-light); }
-        .topology-header h3 { margin: 0; color: var(--text-main); font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; }
+        .topology-header-left h3 { margin: 0; color: var(--text-main); font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; }
+        .topology-instruction { margin: 0.2rem 0 0 0; color: var(--accent); font-size: 0.85rem; font-weight: 600; animation: pulse 2s infinite;}
         
+        @keyframes pulse { 0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
+
         .preset-btns { display: flex; gap: 0.5rem; }
         .preset-btns button { background: var(--bg-dark); color: var(--text-muted); border: 1px solid var(--panel-light); padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-weight: 600; transition: all 0.2s;}
         .preset-btns button:hover { background: var(--panel-light); color: var(--text-main); }
@@ -307,7 +310,10 @@
             
             <div class="topology-wrapper">
                 <div class="topology-header">
-                    <h3>Interactive Network Architecture Simulator</h3>
+                    <div class="topology-header-left">
+                        <h3>Interactive Network Architecture Simulator</h3>
+                        <p class="topology-instruction">Click any fiber link below to set it as the CapEx Bottleneck</p>
+                    </div>
                     <div class="preset-btns">
                         <button onclick="loadTopology('p2p')" id="btn-p2p" class="active">P2P (Long Haul)</button>
                         <button onclick="loadTopology('ring')" id="btn-ring">Metro Ring</button>
@@ -396,7 +402,9 @@
             const axonTotalCapacity = channels * axonSpeedPerChannel; 
 
             // Update Network Topology Visuals based on Axon State
-            updateTopologyVisuals(useAxon, limitGbps, axonTotalCapacity);
+            if(typeof updateTopologyVisuals === "function") {
+                updateTopologyVisuals(useAxon, limitGbps, axonTotalCapacity);
+            }
 
             // --- Optical Link Math ---
             const spliceLossTotal = splices * 0.15; 
@@ -566,6 +574,7 @@
         let nodesDataset = new vis.DataSet([]);
         let edgesDataset = new vis.DataSet([]);
 
+        // Strategically updated presets based on where Axon brings most value
         const topologies = {
             p2p: {
                 nodes: [
@@ -579,7 +588,8 @@
                     { id: 1, label: 'Core 1' }, { id: 2, label: 'Agg 1' }, { id: 3, label: 'Agg 2' }, { id: 4, label: 'Agg 3' }, { id: 5, label: 'Core 2' }
                 ],
                 edges: [
-                    { from: 1, to: 2, id: 'e1' }, { from: 2, to: 3, id: 'e2', isBottleneck: true }, { from: 3, to: 4, id: 'e3' }, { from: 4, to: 5, id: 'e4' }, { from: 5, to: 1, id: 'e5' }
+                    { from: 1, to: 2, id: 'e1', isBottleneck: true }, // Bottleneck moved to Core Uplink
+                    { from: 2, to: 3, id: 'e2' }, { from: 3, to: 4, id: 'e3' }, { from: 4, to: 5, id: 'e4' }, { from: 5, to: 1, id: 'e5' }
                 ]
             },
             star: {
@@ -588,7 +598,8 @@
                     { id: 2, label: 'Splitter A' }, { id: 3, label: 'Splitter B' }, { id: 4, label: 'Splitter C' }, { id: 5, label: 'Remote Node' }
                 ],
                 edges: [
-                    { from: 1, to: 2, id: 'e1' }, { from: 1, to: 3, id: 'e2' }, { from: 1, to: 4, id: 'e3' }, { from: 1, to: 5, id: 'e4', isBottleneck: true }
+                    { from: 1, to: 2, id: 'e1', isBottleneck: true }, // Bottleneck moved to Feeder Fiber
+                    { from: 1, to: 3, id: 'e2' }, { from: 1, to: 4, id: 'e3' }, { from: 1, to: 5, id: 'e4' }
                 ]
             },
             tree: {
@@ -598,8 +609,8 @@
                     { id: 4, label: 'Access A' }, { id: 5, label: 'Access B' }, { id: 6, label: 'Access C' }
                 ],
                 edges: [
-                    { from: 1, to: 2, id: 'e1', isBottleneck: true }, { from: 1, to: 3, id: 'e2' },
-                    { from: 2, to: 4, id: 'e3' }, { from: 2, to: 5, id: 'e4' }, { from: 3, to: 6, id: 'e5' }
+                    { from: 1, to: 2, id: 'e1', isBottleneck: true }, // Core to Dist
+                    { from: 1, to: 3, id: 'e2' }, { from: 2, to: 4, id: 'e3' }, { from: 2, to: 5, id: 'e4' }, { from: 3, to: 6, id: 'e5' }
                 ]
             },
             mesh: {
@@ -607,8 +618,9 @@
                     { id: 1, label: 'Node Alpha' }, { id: 2, label: 'Node Beta' }, { id: 3, label: 'Node Gamma' }, { id: 4, label: 'Node Delta' }
                 ],
                 edges: [
-                    { from: 1, to: 2, id: 'e1' }, { from: 1, to: 3, id: 'e2' }, { from: 1, to: 4, id: 'e3', isBottleneck: true },
-                    { from: 2, to: 3, id: 'e4' }, { from: 2, to: 4, id: 'e5' }, { from: 3, to: 4, id: 'e6' }
+                    { from: 1, to: 2, id: 'e1' }, { from: 1, to: 3, id: 'e2' }, { from: 1, to: 4, id: 'e3' },
+                    { from: 2, to: 3, id: 'e4', isBottleneck: true }, // Central Cross-Connect
+                    { from: 2, to: 4, id: 'e5' }, { from: 3, to: 4, id: 'e6' }
                 ]
             }
         };
@@ -638,6 +650,26 @@
                 }
             };
             networkMap = new vis.Network(container, data, options);
+
+            // NEW: Click Listener to assign the Bottleneck to whatever edge they click
+            networkMap.on("click", function (params) {
+                if (params.edges.length > 0) {
+                    const clickedEdgeId = params.edges[0];
+                    const allEdges = edgesDataset.get();
+                    
+                    // Loop through all edges and only set the clicked one to true
+                    allEdges.forEach(edge => {
+                        edge.isBottleneck = (edge.id === clickedEdgeId);
+                    });
+                    
+                    // Update dataset in Vis.js
+                    edgesDataset.update(allEdges);
+                    
+                    // Recalculate which will trigger updateTopologyVisuals
+                    calculateData();
+                }
+            });
+
             loadTopology('p2p');
         }
 
