@@ -3,10 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HPI Axon | Advanced Network Capacity Audit</title>
+    <title>HPI Axon | Enterprise NaaS Conversion Audit</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
         :root {
             --bg-dark: #0f172a;
@@ -16,8 +14,9 @@
             --text-muted: #94a3b8;
             --accent: #38bdf8;
             --axon-color: #10b981;
-            --axon-glow: rgba(16, 185, 129, 0.2);
+            --axon-glow: rgba(16, 185, 129, 0.15);
             --danger: #ef4444;
+            --danger-glow: rgba(239, 68, 68, 0.15);
             --warning: #f59e0b;
         }
         body {
@@ -30,68 +29,75 @@
             flex-direction: column;
             align-items: center;
         }
-        .header { width: 100%; max-width: 1400px; margin-bottom: 2rem; border-bottom: 1px solid var(--text-muted); padding-bottom: 1rem; }
-        .header h1 { margin: 0; font-size: 2rem; color: var(--accent); }
+        .header { width: 100%; max-width: 1500px; margin-bottom: 2rem; border-bottom: 1px solid var(--panel-light); padding-bottom: 1rem; display: flex; justify-content: space-between; align-items: flex-end;}
+        .header h1 { margin: 0; font-size: 2.2rem; color: var(--accent); letter-spacing: -0.5px; }
         .header p { margin: 0.5rem 0 0 0; color: var(--text-muted); font-size: 1.1rem; }
+        .branding { font-weight: bold; color: var(--text-muted); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 2px;}
+
+        .container { display: flex; gap: 2rem; width: 100%; max-width: 1500px; align-items: stretch; }
         
-        .container { display: flex; gap: 2rem; width: 100%; max-width: 1400px; }
-        
-        .controls {
-            flex: 1;
-            background: var(--panel-bg);
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-            max-width: 400px;
+        .controls-sidebar {
+            flex: 0 0 420px;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding-right: 10px;
         }
-        .dashboard { flex: 2; display: flex; flex-direction: column; gap: 1.5rem; }
         
-        .chart-container { background: var(--panel-bg); padding: 1.5rem; border-radius: 8px; height: 450px; }
+        /* Custom Scrollbar for controls */
+        .controls-sidebar::-webkit-scrollbar { width: 6px; }
+        .controls-sidebar::-webkit-scrollbar-track { background: var(--bg-dark); }
+        .controls-sidebar::-webkit-scrollbar-thumb { background: var(--panel-light); border-radius: 3px; }
+
+        .control-group {
+            background: var(--panel-bg);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--panel-light);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+        }
+        .control-group h3 { margin: 0 0 1.2rem 0; font-size: 1.1rem; color: var(--accent); border-bottom: 1px solid var(--panel-light); padding-bottom: 0.5rem; text-transform: uppercase; font-weight: 600; letter-spacing: 1px;}
+        
+        .dashboard { flex: 1; display: flex; flex-direction: column; gap: 1.5rem; }
+        
+        .chart-container { background: var(--panel-bg); padding: 1.5rem; border-radius: 8px; height: 480px; border: 1px solid var(--panel-light); }
         
         /* Form Elements */
-        .form-group { margin-bottom: 1.5rem; }
-        label { display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; color: var(--text-muted); }
-        input[type="range"] { width: 100%; margin-top: 0.5rem; accent-color: var(--accent); }
+        .form-group { margin-bottom: 1.2rem; }
+        label { display: block; margin-bottom: 0.4rem; font-weight: 600; font-size: 0.85rem; color: var(--text-muted); }
+        input[type="range"] { width: 100%; margin-top: 0.3rem; accent-color: var(--accent); }
+        select { width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-main); border: 1px solid var(--panel-light); border-radius: 4px; font-size: 0.9rem; }
         .value-display { float: right; color: var(--text-main); font-weight: bold; }
         
-        /* Metric Layout */
-        .metrics-stack { display: flex; flex-direction: column; gap: 1rem; }
+        /* Metrics Layout */
+        .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
         
         .metric-card {
             background: var(--panel-bg);
             padding: 1.5rem;
             border-radius: 8px;
-            text-align: center;
             border: 1px solid var(--panel-light);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
         
-        .metric-card.danger { border-top: 4px solid var(--danger); }
-        .metric-value { font-size: 2rem; font-weight: bold; margin: 0.5rem 0; }
-        
-        /* Axon Conditional Layout */
-        #axon-metrics-container {
-            display: none; /* Hidden by default */
-            gap: 1rem;
-        }
-        
-        .metric-card.axon { 
-            border-top: 4px solid var(--axon-color); 
-            background: linear-gradient(180deg, var(--panel-bg) 0%, rgba(16, 185, 129, 0.05) 100%);
-            flex: 1;
-            padding: 2.5rem 1.5rem; /* Make it bigger */
-        }
-        .metric-card.axon .metric-value { font-size: 3rem; color: var(--axon-color); }
-        
-        .metric-card.savings {
-            border-top: 4px solid var(--accent);
-            background: linear-gradient(180deg, var(--panel-bg) 0%, rgba(56, 189, 248, 0.05) 100%);
-            flex: 1;
-            padding: 2.5rem 1.5rem;
-        }
-        .metric-card.savings .metric-value { font-size: 3rem; color: var(--accent); }
+        .metric-card .title { color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;}
+        .metric-value { font-size: 2.2rem; font-weight: bold; line-height: 1; margin-bottom: 0.5rem; }
+        .metric-card .subtitle { font-size: 0.85rem; color: var(--text-muted); }
 
+        .status-indicator { margin-top: 1rem; padding: 0.8rem; border-radius: 4px; font-weight: bold; font-size: 0.9rem; display: flex; justify-content: space-between;}
+        .status-pass { background: var(--axon-glow); color: var(--axon-color); border: 1px solid var(--axon-color); }
+        .status-fail { background: var(--danger-glow); color: var(--danger); border: 1px solid var(--danger); }
+
+        /* Axon UI */
+        .metric-card.axon-active { border-color: var(--axon-color); background: linear-gradient(180deg, var(--panel-bg) 0%, rgba(16, 185, 129, 0.05) 100%); }
+        .metric-card.axon-active .metric-value { color: var(--axon-color); }
+        
         .toggle-container {
-            margin-top: 2rem;
+            margin-top: 1rem;
             background: var(--axon-glow);
             padding: 1.5rem;
             border-radius: 8px;
@@ -101,60 +107,88 @@
             cursor: pointer;
             transition: all 0.2s;
         }
-        .toggle-container:hover { background: rgba(16, 185, 129, 0.3); }
-        .toggle-container input { transform: scale(1.8); margin-right: 1.5rem; cursor: pointer; }
-        .toggle-label { margin: 0; font-size: 1.2rem; font-weight: bold; color: var(--axon-color); cursor: pointer; }
+        .toggle-container:hover { background: rgba(16, 185, 129, 0.25); }
+        .toggle-container input { transform: scale(1.6); margin-right: 1.2rem; cursor: pointer; accent-color: var(--axon-color);}
+        .toggle-label { margin: 0; font-size: 1.1rem; font-weight: bold; color: var(--axon-color); cursor: pointer; text-transform: uppercase; letter-spacing: 1px;}
 
-        .math-explainer {
-            margin-top: 1rem;
-            padding: 1rem;
-            background: #000;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            border-left: 3px solid var(--warning);
-        }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <h1>Hansen Photonics | NaaS Conversion Audit</h1>
-        <p>Logistic Growth & Capacity Bottleneck Forecaster</p>
+        <div>
+            <h1>NaaS Conversion & Infrastructure Audit</h1>
+            <p>Advanced Capacity Forecasting & Optical Link Budget Analysis</p>
+        </div>
+        <div class="branding">Hansen Photonics Inc.</div>
     </div>
 
     <div class="container">
-        <div class="controls">
-            <h3 style="margin-top:0;">Network Parameters</h3>
+        
+        <div class="controls-sidebar">
             
-            <div class="form-group">
-                <label>Current Base Capacity (Gbps) <span class="value-display" id="val-limit">100</span></label>
-                <input type="range" id="input-limit" min="10" max="400" step="10" value="100">
+            <div class="control-group">
+                <h3>1. Traffic & Demand Model</h3>
+                <div class="form-group">
+                    <label>Growth Algorithm</label>
+                    <select id="input-algo">
+                        <option value="50">Nielsen's Law (50% Annual YoY)</option>
+                        <option value="40">Aggressive Market Expansion (40%)</option>
+                        <option value="30">Conservative Standard Growth (30%)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Current Peak Demand (Gbps) <span class="value-display" id="val-load">20</span></label>
+                    <input type="range" id="input-load" min="5" max="100" step="5" value="20">
+                </div>
+                <div class="form-group">
+                    <label>Max Market Capacity (Gbps Limit) <span class="value-display" id="val-max">400</span></label>
+                    <input type="range" id="input-max" min="100" max="1000" step="50" value="400">
+                </div>
             </div>
 
-            <div class="form-group">
-                <label>Current Peak Demand (Gbps) <span class="value-display" id="val-load">20</span></label>
-                <input type="range" id="input-load" min="5" max="200" step="5" value="20">
+            <div class="control-group">
+                <h3>2. Physical Link Budget</h3>
+                <div class="form-group">
+                    <label>Standard Transceiver Type</label>
+                    <select id="input-optics">
+                        <option value="100:6.3">100GBASE-LR4 (100Gbps, ~6.3dB Budget)</option>
+                        <option value="100:18.0">100GBASE-ER4 (100Gbps, ~18.0dB Budget)</option>
+                        <option value="400:6.3">400GBASE-LR4 (400Gbps, ~6.3dB Budget)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Distance to Target Node (km) <span class="value-display" id="val-dist">15</span></label>
+                    <input type="range" id="input-dist" min="1" max="50" step="1" value="15">
+                </div>
+                <div class="form-group">
+                    <label>Fiber Attenuation (dB/km) <span class="value-display" id="val-atten">0.35</span></label>
+                    <input type="range" id="input-atten" min="0.20" max="0.50" step="0.05" value="0.35">
+                </div>
+                <div class="form-group">
+                    <label>Inline Splices & Connectors <span class="value-display" id="val-splices">4</span></label>
+                    <input type="range" id="input-splices" min="0" max="20" step="1" value="4">
+                </div>
+                <div id="optical-status" class="status-indicator status-pass">
+                    <span>Total Loss: <span id="val-totalloss">0</span> dB</span>
+                    <span id="val-passfail">PASS</span>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label>Max Market Capacity (S-Curve Asymptote) <span class="value-display" id="val-max">300</span></label>
-                <input type="range" id="input-max" min="100" max="1000" step="50" value="300">
-            </div>
-
-            <div class="form-group">
-                <label>Initial Growth Rate (%) <span class="value-display" id="val-growth">40</span></label>
-                <input type="range" id="input-growth" min="5" max="100" step="5" value="40">
-            </div>
-            
-            <div class="form-group">
-                <label>Trenching/Boring Cost ($/Foot) <span class="value-display" id="val-cost">$25</span></label>
-                <input type="range" id="input-cost" min="10" max="100" step="5" value="25">
-            </div>
-
-            <div class="form-group">
-                <label>Distance to Node (Miles) <span class="value-display" id="val-dist">12</span></label>
-                <input type="range" id="input-dist" min="1" max="50" step="1" value="12">
+            <div class="control-group">
+                <h3>3. CapEx & Construction Math</h3>
+                <div class="form-group">
+                    <label>Deployment Method</label>
+                    <select id="input-const">
+                        <option value="80">Directional Boring (~$80/ft)</option>
+                        <option value="35">Micro-trenching (~$35/ft)</option>
+                        <option value="15">Aerial Strand/Lash (~$15/ft)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Permitting & Construction Lead Time <span class="value-display" id="val-delay">18 Mos</span></label>
+                    <input type="range" id="input-delay" min="3" max="36" step="1" value="18">
+                </div>
             </div>
 
             <label class="toggle-container">
@@ -162,42 +196,34 @@
                 <span class="toggle-label">Deploy Axon NaaS Overlay</span>
             </label>
 
-            <div class="math-explainer">
-                <strong>Mathematical Model: Logistic Growth</strong><br><br>
-                Traffic growth is modeled using an S-Curve, where demand \( D(t) \) at year \( t \) approaches maximum market capacity \( K \):
-                <div style="text-align: center; margin: 10px 0;">
-                    \( D(t) = \frac{K}{1 + \left(\frac{K - D_0}{D_0}\right) e^{-rt}} \)
-                </div>
-                The <strong>Inflection Point</strong> (\( D = K/2 \)) marks where the second derivative turns negative, indicating the transition from accelerating adoption to market saturation.
-            </div>
         </div>
 
         <div class="dashboard">
+            
+            <div class="metrics-grid">
+                <div class="metric-card" style="border-top: 4px solid var(--danger);">
+                    <div class="title">Hardware Exhaustion (CapEx Cliff)</div>
+                    <div class="metric-value" style="color: var(--danger);" id="metric-cliff">Year 0</div>
+                    <div class="subtitle">When traffic exceeds transceiver limits.</div>
+                </div>
+                
+                <div class="metric-card" id="card-extension">
+                    <div class="title">Axon NaaS Headroom</div>
+                    <div class="metric-value" id="metric-extension" style="color: var(--text-muted);">Inactive</div>
+                    <div class="subtitle" id="sub-extension">Toggle Axon to view capacity extension.</div>
+                </div>
+                
+                <div class="metric-card" id="card-savings">
+                    <div class="title">Deferred Infrastructure CapEx</div>
+                    <div class="metric-value" id="metric-savings" style="color: var(--accent);">$0</div>
+                    <div class="subtitle" id="sub-savings">Cost of trenching/boring new fiber lines.</div>
+                </div>
+            </div>
+
             <div class="chart-container">
                 <canvas id="capacityChart"></canvas>
             </div>
             
-            <div class="metrics-stack">
-                <div class="metric-card danger">
-                    <div style="color: var(--text-muted); font-size: 1rem; text-transform: uppercase; letter-spacing: 1px;">Standard CapEx Action Required</div>
-                    <div class="metric-value" style="color: var(--danger);" id="metric-cliff">Year 4.2</div>
-                    <div style="font-size: 0.9rem;">Network degrades. Hardware upgrade or new fiber required.</div>
-                </div>
-                
-                <div id="axon-metrics-container">
-                    <div class="metric-card axon">
-                        <div style="color: var(--text-main); font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px;">New Axon Headroom</div>
-                        <div class="metric-value" id="metric-extension">+8.5 Years</div>
-                        <div style="font-size: 1rem; color: var(--text-muted);">Additional lifespan created by intensity division multiplexing</div>
-                    </div>
-                    
-                    <div class="metric-card savings">
-                        <div style="color: var(--text-main); font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px;">Deferred CapEx Capital</div>
-                        <div class="metric-value" id="metric-savings">$1.58M</div>
-                        <div style="font-size: 1rem; color: var(--text-muted);">Immediate infrastructure savings avoiding trenching</div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -211,99 +237,130 @@
         }
 
         function calculateData() {
-            const limit = parseFloat(document.getElementById('input-limit').value);
+            // 1. Traffic Inputs
+            const r = parseFloat(document.getElementById('input-algo').value) / 100; // Nielsen's Law is 50%
             const d0 = parseFloat(document.getElementById('input-load').value);
             let k = parseFloat(document.getElementById('input-max').value);
-            const r = parseFloat(document.getElementById('input-growth').value) / 100;
-            const costPerFoot = parseFloat(document.getElementById('input-cost').value);
-            const distMiles = parseFloat(document.getElementById('input-dist').value);
+            
+            // 2. Optical Inputs
+            const opticVals = document.getElementById('input-optics').value.split(':');
+            const limitGbps = parseFloat(opticVals[0]);
+            const maxBudgetDb = parseFloat(opticVals[1]);
+            const distKm = parseFloat(document.getElementById('input-dist').value);
+            const atten = parseFloat(document.getElementById('input-atten').value);
+            const splices = parseFloat(document.getElementById('input-splices').value);
+            
+            // 3. Financial Inputs
+            const costPerFoot = parseFloat(document.getElementById('input-const').value);
+            const delayMos = parseInt(document.getElementById('input-delay').value);
+            
+            // State
             const useAxon = document.getElementById('input-axon').checked;
+            const axonMultiplier = 4; // Intensity Division Multiplexing
+            const activeLimit = useAxon ? limitGbps * axonMultiplier : limitGbps;
 
-            // Enforce logic: Max capacity must be greater than initial load
-            if (k <= d0) { k = d0 + 10; document.getElementById('input-max').value = k; document.getElementById('val-max').innerText = k; }
+            // --- Optical Link Math ---
+            const spliceLossTotal = splices * 0.15; // Assume 0.15dB per splice/connector avg
+            const fiberLoss = distKm * atten;
+            const totalLoss = fiberLoss + spliceLossTotal;
+            
+            const optStatus = document.getElementById('optical-status');
+            document.getElementById('val-totalloss').innerText = totalLoss.toFixed(2);
+            
+            if (totalLoss > maxBudgetDb) {
+                optStatus.className = 'status-indicator status-fail';
+                document.getElementById('val-passfail').innerText = 'FAIL (Exceeds ' + maxBudgetDb + 'dB)';
+            } else {
+                optStatus.className = 'status-indicator status-pass';
+                document.getElementById('val-passfail').innerText = 'PASS (Budget: ' + maxBudgetDb + 'dB)';
+            }
 
-            const axonMultiplier = 4; 
-            const activeLimit = useAxon ? limit * axonMultiplier : limit;
+            // --- Financial Math ---
+            // Convert km to feet: 1 km = 3280.84 ft
+            const distFeet = distKm * 3280.84;
+            const totalCapEx = costPerFoot * distFeet;
+            document.getElementById('metric-savings').innerText = formatCurrency(totalCapEx);
+
+            // --- Traffic Logistic Curve Math ---
+            if (k <= d0) { k = d0 + 10; } // Ensure logic
+            const getDemand = (t) => k / (1 + ((k - d0) / d0) * Math.exp(-r * t));
 
             let labels = [];
             let demandData = [];
             let stdLimitData = [];
             let axonLimitData = [];
-            let pointsOfInterest = [];
             
-            let standardCliffYear = null;
+            let stdCliffYear = null;
             let axonCliffYear = null;
 
-            // Logistic Growth Function
-            const getDemand = (t) => k / (1 + ((k - d0) / d0) * Math.exp(-r * t));
-
-            // Inflection Point Calculation (t where D(t) = K/2)
-            const t_inflection = Math.log((k - d0) / d0) / r;
-            const d_inflection = k / 2;
-
             for (let i = 0; i <= 15; i += 0.5) {
-                if (i % 1 === 0) labels.push('Year ' + i);
-                else labels.push(''); // Hide half-year labels for clean axis
-
+                if (i % 1 === 0) labels.push('Yr ' + i); else labels.push('');
+                
                 let currentDemand = getDemand(i);
                 demandData.push({x: i, y: currentDemand});
-                stdLimitData.push({x: i, y: limit});
-                if(useAxon) axonLimitData.push({x: i, y: limit * axonMultiplier});
+                stdLimitData.push({x: i, y: limitGbps});
+                if(useAxon) axonLimitData.push({x: i, y: limitGbps * axonMultiplier});
 
-                // Detect exact crossing points roughly
-                if (standardCliffYear === null && currentDemand >= limit) standardCliffYear = i;
-                if (useAxon && axonCliffYear === null && currentDemand >= (limit * axonMultiplier)) axonCliffYear = i;
+                if (stdCliffYear === null && currentDemand >= limitGbps) stdCliffYear = i;
+                if (useAxon && axonCliffYear === null && currentDemand >= (limitGbps * axonMultiplier)) axonCliffYear = i;
             }
 
-            // Financial Math
-            const costPerMile = costPerFoot * 5280;
-            const totalCapEx = costPerMile * distMiles;
-            document.getElementById('metric-savings').innerText = formatCurrency(totalCapEx);
-
-            // Update DOM Strings
-            document.getElementById('metric-cliff').innerText = standardCliffYear !== null ? "Year " + standardCliffYear.toFixed(1) : "> 15 Yrs";
-            
-            if (useAxon) {
-                if (axonCliffYear === null && standardCliffYear !== null) {
-                    document.getElementById('metric-extension').innerText = "> 15 Yrs";
-                } else if (axonCliffYear !== null && standardCliffYear !== null) {
-                    document.getElementById('metric-extension').innerText = "+" + (axonCliffYear - standardCliffYear).toFixed(1) + " Yrs";
-                } else {
-                    document.getElementById('metric-extension').innerText = "Infinite";
+            // --- Update UI Metrics ---
+            const metricCliff = document.getElementById('metric-cliff');
+            if (stdCliffYear !== null) {
+                metricCliff.innerText = "Year " + stdCliffYear.toFixed(1);
+                // Check against delay
+                const delayYears = delayMos / 12;
+                if (stdCliffYear < delayYears) {
+                    metricCliff.innerHTML = `Year ${stdCliffYear.toFixed(1)} <span style="font-size:1rem; display:block; color:var(--warning);">⚠ Exhaustion precedes permit time</span>`;
                 }
+            } else {
+                metricCliff.innerText = "> 15 Yrs";
             }
 
-            // Toggle UI Elements
-            document.getElementById('axon-metrics-container').style.display = useAxon ? 'flex' : 'none';
+            const cardExt = document.getElementById('card-extension');
+            const metricExt = document.getElementById('metric-extension');
+            const subExt = document.getElementById('sub-extension');
 
-            // Point definitions for chart annotations
-            if(t_inflection > 0 && t_inflection < 15) {
-                pointsOfInterest.push({ x: t_inflection, y: d_inflection, label: 'Inflection Point (Growth Slows)' });
+            if (useAxon) {
+                cardExt.classList.add('axon-active');
+                if (axonCliffYear === null && stdCliffYear !== null) {
+                    metricExt.innerText = "> 15 Yrs";
+                    subExt.innerText = "Lifespan pushed beyond model projection.";
+                } else if (axonCliffYear !== null && stdCliffYear !== null) {
+                    metricExt.innerText = "+" + (axonCliffYear - stdCliffYear).toFixed(1) + " Yrs";
+                    subExt.innerText = "Zero-friction capacity extension.";
+                } else {
+                    metricExt.innerText = "Infinite";
+                    subExt.innerText = "Capacity exceeds theoretical market cap.";
+                }
+            } else {
+                cardExt.classList.remove('axon-active');
+                metricExt.innerText = "Inactive";
+                subExt.innerText = "Toggle Axon to view capacity extension.";
+                metricExt.style.color = "var(--text-muted)";
             }
 
-            updateChart(labels, demandData, stdLimitData, axonLimitData, pointsOfInterest, useAxon);
+            updateChart(labels, demandData, stdLimitData, axonLimitData, useAxon, k);
         }
 
-        function updateChart(labels, demand, stdLimit, axonLimit, poi, useAxon) {
+        function updateChart(labels, demand, stdLimit, axonLimit, useAxon, maxCapacity) {
             const ctx = document.getElementById('capacityChart').getContext('2d');
             if (myChart) { myChart.destroy(); }
 
-            // Create Scatter points for Points of Interest
-            let scatterData = poi.map(p => ({ x: p.x * 2, y: p.y })); // *2 because x-axis array has 0.5 increments
-
             let datasets = [
                 {
-                    label: 'Bandwidth Demand (Logistic Curve)',
+                    label: 'Bandwidth Demand (Nielsen Logistic)',
                     data: demand.map(d => d.y),
-                    borderColor: '#f59e0b',
-                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                    borderColor: '#38bdf8',
+                    backgroundColor: 'rgba(56, 189, 248, 0.15)',
                     fill: true,
                     tension: 0.4,
                     borderWidth: 3,
                     pointRadius: 0
                 },
                 {
-                    label: 'Standard HW Limit',
+                    label: 'Standard CapEx Limit',
                     data: stdLimit.map(d => d.y),
                     borderColor: '#ef4444',
                     borderDash: [5, 5],
@@ -314,25 +371,12 @@
 
             if (useAxon) {
                 datasets.push({
-                    label: 'Axon NaaS Capacity',
+                    label: 'Axon NaaS Multiplier',
                     data: axonLimit.map(d => d.y),
                     borderColor: '#10b981',
                     borderDash: [5, 5],
                     pointRadius: 0,
                     borderWidth: 3
-                });
-            }
-
-            // Add Inflection Point Scatter
-            if (poi.length > 0) {
-                datasets.push({
-                    label: 'Inflection Point (2nd Derivative = 0)',
-                    data: scatterData,
-                    backgroundColor: '#fff',
-                    borderColor: '#f59e0b',
-                    borderWidth: 2,
-                    pointRadius: 6,
-                    type: 'scatter'
                 });
             }
 
@@ -344,14 +388,13 @@
                     maintainAspectRatio: false,
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
-                        legend: { labels: { color: '#f8fafc' } },
+                        legend: { position: 'bottom', labels: { color: '#f8fafc', padding: 20, font: {size: 13} } },
                         tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    if (context.dataset.type === 'scatter') return 'Inflection: Growth Acceleration Stops';
-                                    return context.dataset.label + ': ' + context.parsed.y.toFixed(1) + ' Gbps';
-                                }
-                            }
+                            backgroundColor: '#1e293b',
+                            titleColor: '#38bdf8',
+                            borderColor: '#334155',
+                            borderWidth: 1,
+                            padding: 12
                         }
                     },
                     scales: {
@@ -359,34 +402,36 @@
                             beginAtZero: true,
                             grid: { color: '#334155' },
                             ticks: { color: '#94a3b8' },
-                            title: { display: true, text: 'Bandwidth (Gbps)', color: '#94a3b8' }
+                            title: { display: true, text: 'Traffic Load (Gbps)', color: '#94a3b8' },
+                            max: maxCapacity * 1.1
                         },
                         x: {
                             grid: { color: '#334155', tickColor: 'transparent' },
-                            ticks: { color: '#94a3b8', autoSkip: false, maxRotation: 45, minRotation: 45 }
+                            ticks: { color: '#94a3b8', autoSkip: true, maxTicksLimit: 16 }
                         }
                     }
                 }
             });
         }
 
-        const inputs = ['limit', 'load', 'max', 'growth', 'cost', 'dist'];
-        inputs.forEach(id => {
+        // Event Listeners
+        const rangeInputs = ['load', 'max', 'dist', 'atten', 'splices', 'delay'];
+        rangeInputs.forEach(id => {
             document.getElementById('input-' + id).addEventListener('input', function(e) {
-                let displayVal = e.target.value;
-                if (id === 'cost') displayVal = '$' + displayVal;
-                document.getElementById('val-' + id).innerText = displayVal;
+                document.getElementById('val-' + id).innerText = e.target.value + (id==='delay'?' Mos':'');
                 calculateData();
             });
         });
 
+        const selectInputs = ['algo', 'optics', 'const'];
+        selectInputs.forEach(id => {
+            document.getElementById('input-' + id).addEventListener('change', calculateData);
+        });
+
         document.getElementById('input-axon').addEventListener('change', calculateData);
 
-        // Run once on load
-        setTimeout(() => {
-            if (window.MathJax) MathJax.typesetPromise();
-            calculateData();
-        }, 200);
+        // Initial Load
+        setTimeout(calculateData, 100);
     </script>
 </body>
 </html>
