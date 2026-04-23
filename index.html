@@ -46,7 +46,6 @@
             padding-right: 10px;
         }
         
-        /* Custom Scrollbar for controls */
         .controls-sidebar::-webkit-scrollbar { width: 6px; }
         .controls-sidebar::-webkit-scrollbar-track { background: var(--bg-dark); }
         .controls-sidebar::-webkit-scrollbar-thumb { background: var(--panel-light); border-radius: 3px; }
@@ -68,8 +67,11 @@
         .form-group { margin-bottom: 1.2rem; }
         label { display: block; margin-bottom: 0.4rem; font-weight: 600; font-size: 0.85rem; color: var(--text-muted); }
         input[type="range"] { width: 100%; margin-top: 0.3rem; accent-color: var(--accent); }
-        select { width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-main); border: 1px solid var(--panel-light); border-radius: 4px; font-size: 0.9rem; }
+        input[type="number"] { width: 100%; padding: 0.5rem; background: var(--bg-dark); color: var(--text-main); border: 1px solid var(--panel-light); border-radius: 4px; font-size: 0.9rem; box-sizing: border-box;}
+        select { width: 100%; padding: 0.6rem; background: var(--bg-dark); color: var(--text-main); border: 1px solid var(--panel-light); border-radius: 4px; font-size: 0.9rem; margin-bottom: 0.5rem;}
         .value-display { float: right; color: var(--text-main); font-weight: bold; }
+        
+        .custom-optics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.5rem; }
         
         /* Metrics Layout */
         .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
@@ -150,24 +152,56 @@
             <div class="control-group">
                 <h3>2. Physical Link Budget</h3>
                 <div class="form-group">
-                    <label>Standard Transceiver Type</label>
+                    <label>Transceiver Type</label>
                     <select id="input-optics">
-                        <option value="100:6.3">100GBASE-LR4 (100Gbps, ~6.3dB Budget)</option>
-                        <option value="100:18.0">100GBASE-ER4 (100Gbps, ~18.0dB Budget)</option>
-                        <option value="400:6.3">400GBASE-LR4 (400Gbps, ~6.3dB Budget)</option>
+                        <optgroup label="10G Optics">
+                            <option value="10:6.2">10GBASE-LR (10Gbps, 6.2dB Budget)</option>
+                            <option value="10:15.0">10GBASE-ER (10Gbps, 15.0dB Budget)</option>
+                            <option value="10:24.0">10GBASE-ZR (10Gbps, 24.0dB Budget)</option>
+                        </optgroup>
+                        <optgroup label="40G Optics">
+                            <option value="40:6.7">40GBASE-LR4 (40Gbps, 6.7dB Budget)</option>
+                            <option value="40:18.0">40GBASE-ER4 (40Gbps, 18.0dB Budget)</option>
+                        </optgroup>
+                        <optgroup label="100G Optics">
+                            <option value="100:6.3" selected>100GBASE-LR4 (100Gbps, 6.3dB Budget)</option>
+                            <option value="100:18.0">100GBASE-ER4 (100Gbps, 18.0dB Budget)</option>
+                            <option value="100:24.0">100GBASE-ZR4 (100Gbps, 24.0dB Budget)</option>
+                        </optgroup>
+                        <optgroup label="400G Optics">
+                            <option value="400:6.3">400GBASE-LR4 (400Gbps, 6.3dB Budget)</option>
+                            <option value="400:18.0">400GBASE-ER8 (400Gbps, 18.0dB Budget)</option>
+                        </optgroup>
+                        <optgroup label="Custom">
+                            <option value="custom">Custom Transceiver Spec...</option>
+                        </optgroup>
                     </select>
+                    
+                    <div id="custom-optics-fields" style="display: none;">
+                        <div class="custom-optics-grid">
+                            <div>
+                                <label>Speed (Gbps)</label>
+                                <input type="number" id="custom-speed" value="200" min="1">
+                            </div>
+                            <div>
+                                <label>Budget (dB)</label>
+                                <input type="number" id="custom-budget" value="12" step="0.1">
+                            </div>
+                        </div>
+                    </div>
                 </div>
+                
                 <div class="form-group">
                     <label>Distance to Target Node (km) <span class="value-display" id="val-dist">15</span></label>
-                    <input type="range" id="input-dist" min="1" max="50" step="1" value="15">
+                    <input type="range" id="input-dist" min="1" max="100" step="1" value="15">
                 </div>
                 <div class="form-group">
                     <label>Fiber Attenuation (dB/km) <span class="value-display" id="val-atten">0.35</span></label>
-                    <input type="range" id="input-atten" min="0.20" max="0.50" step="0.05" value="0.35">
+                    <input type="range" id="input-atten" min="0.15" max="0.60" step="0.05" value="0.35">
                 </div>
                 <div class="form-group">
                     <label>Inline Splices & Connectors <span class="value-display" id="val-splices">4</span></label>
-                    <input type="range" id="input-splices" min="0" max="20" step="1" value="4">
+                    <input type="range" id="input-splices" min="0" max="30" step="1" value="4">
                 </div>
                 <div id="optical-status" class="status-indicator status-pass">
                     <span>Total Loss: <span id="val-totalloss">0</span> dB</span>
@@ -177,16 +211,20 @@
 
             <div class="control-group">
                 <h3>3. CapEx & Construction Math</h3>
+                
                 <div class="form-group">
-                    <label>Deployment Method</label>
-                    <select id="input-const">
-                        <option value="80">Directional Boring (~$80/ft)</option>
-                        <option value="35">Micro-trenching (~$35/ft)</option>
-                        <option value="15">Aerial Strand/Lash (~$15/ft)</option>
-                    </select>
+                    <label>Labor / Trenching Cost ($/ft) <span class="value-display" id="val-labor">$35</span></label>
+                    <input type="range" id="input-labor" min="5" max="150" step="1" value="35">
+                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">(Aerial: ~$15 | Micro-trench: ~$35 | Boring: ~$80)</div>
                 </div>
+                
                 <div class="form-group">
-                    <label>Permitting & Construction Lead Time <span class="value-display" id="val-delay">18 Mos</span></label>
+                    <label>Raw Fiber Material Cost ($/ft) <span class="value-display" id="val-fiber">$1.50</span></label>
+                    <input type="range" id="input-fiber" min="0.50" max="10.00" step="0.10" value="1.50">
+                </div>
+                
+                <div class="form-group">
+                    <label>Permitting & Construction Delay <span class="value-display" id="val-delay">18 Mos</span></label>
                     <input type="range" id="input-delay" min="3" max="36" step="1" value="18">
                 </div>
             </div>
@@ -216,7 +254,7 @@
                 <div class="metric-card" id="card-savings">
                     <div class="title">Deferred Infrastructure CapEx</div>
                     <div class="metric-value" id="metric-savings" style="color: var(--accent);">$0</div>
-                    <div class="subtitle" id="sub-savings">Cost of trenching/boring new fiber lines.</div>
+                    <div class="subtitle" id="sub-savings">Combined Labor + Material cost avoided.</div>
                 </div>
             </div>
 
@@ -233,25 +271,51 @@
         function formatCurrency(num) {
             if (num >= 1000000) return '$' + (num / 1000000).toFixed(2) + 'M';
             if (num >= 1000) return '$' + (num / 1000).toFixed(0) + 'k';
-            return '$' + num;
+            return '$' + num.toLocaleString();
         }
+
+        // Toggle Custom Optics Fields
+        document.getElementById('input-optics').addEventListener('change', function(e) {
+            const customFields = document.getElementById('custom-optics-fields');
+            if(e.target.value === 'custom') {
+                customFields.style.display = 'block';
+            } else {
+                customFields.style.display = 'none';
+            }
+            calculateData();
+        });
+
+        // Add event listeners to custom numeric inputs
+        document.getElementById('custom-speed').addEventListener('input', calculateData);
+        document.getElementById('custom-budget').addEventListener('input', calculateData);
 
         function calculateData() {
             // 1. Traffic Inputs
-            const r = parseFloat(document.getElementById('input-algo').value) / 100; // Nielsen's Law is 50%
+            const r = parseFloat(document.getElementById('input-algo').value) / 100;
             const d0 = parseFloat(document.getElementById('input-load').value);
             let k = parseFloat(document.getElementById('input-max').value);
             
             // 2. Optical Inputs
-            const opticVals = document.getElementById('input-optics').value.split(':');
-            const limitGbps = parseFloat(opticVals[0]);
-            const maxBudgetDb = parseFloat(opticVals[1]);
+            let limitGbps, maxBudgetDb;
+            const opticsSelection = document.getElementById('input-optics').value;
+            
+            if (opticsSelection === 'custom') {
+                limitGbps = parseFloat(document.getElementById('custom-speed').value) || 1;
+                maxBudgetDb = parseFloat(document.getElementById('custom-budget').value) || 0;
+            } else {
+                const opticVals = opticsSelection.split(':');
+                limitGbps = parseFloat(opticVals[0]);
+                maxBudgetDb = parseFloat(opticVals[1]);
+            }
+            
             const distKm = parseFloat(document.getElementById('input-dist').value);
             const atten = parseFloat(document.getElementById('input-atten').value);
             const splices = parseFloat(document.getElementById('input-splices').value);
             
             // 3. Financial Inputs
-            const costPerFoot = parseFloat(document.getElementById('input-const').value);
+            const laborPerFoot = parseFloat(document.getElementById('input-labor').value);
+            const fiberPerFoot = parseFloat(document.getElementById('input-fiber').value);
+            const totalCostPerFoot = laborPerFoot + fiberPerFoot;
             const delayMos = parseInt(document.getElementById('input-delay').value);
             
             // State
@@ -276,13 +340,12 @@
             }
 
             // --- Financial Math ---
-            // Convert km to feet: 1 km = 3280.84 ft
             const distFeet = distKm * 3280.84;
-            const totalCapEx = costPerFoot * distFeet;
+            const totalCapEx = totalCostPerFoot * distFeet;
             document.getElementById('metric-savings').innerText = formatCurrency(totalCapEx);
 
             // --- Traffic Logistic Curve Math ---
-            if (k <= d0) { k = d0 + 10; } // Ensure logic
+            if (k <= d0) { k = d0 + 10; } 
             const getDemand = (t) => k / (1 + ((k - d0) / d0) * Math.exp(-r * t));
 
             let labels = [];
@@ -309,7 +372,6 @@
             const metricCliff = document.getElementById('metric-cliff');
             if (stdCliffYear !== null) {
                 metricCliff.innerText = "Year " + stdCliffYear.toFixed(1);
-                // Check against delay
                 const delayYears = delayMos / 12;
                 if (stdCliffYear < delayYears) {
                     metricCliff.innerHTML = `Year ${stdCliffYear.toFixed(1)} <span style="font-size:1rem; display:block; color:var(--warning);">⚠ Exhaustion precedes permit time</span>`;
@@ -360,7 +422,7 @@
                     pointRadius: 0
                 },
                 {
-                    label: 'Standard CapEx Limit',
+                    label: 'Transceiver CapEx Limit',
                     data: stdLimit.map(d => d.y),
                     borderColor: '#ef4444',
                     borderDash: [5, 5],
@@ -415,19 +477,18 @@
         }
 
         // Event Listeners
-        const rangeInputs = ['load', 'max', 'dist', 'atten', 'splices', 'delay'];
+        const rangeInputs = ['load', 'max', 'dist', 'atten', 'splices', 'delay', 'labor', 'fiber'];
         rangeInputs.forEach(id => {
             document.getElementById('input-' + id).addEventListener('input', function(e) {
-                document.getElementById('val-' + id).innerText = e.target.value + (id==='delay'?' Mos':'');
+                let val = e.target.value;
+                if (id === 'labor' || id === 'fiber') val = '$' + parseFloat(val).toFixed(id==='fiber'?2:0);
+                if (id === 'delay') val = val + ' Mos';
+                document.getElementById('val-' + id).innerText = val;
                 calculateData();
             });
         });
 
-        const selectInputs = ['algo', 'optics', 'const'];
-        selectInputs.forEach(id => {
-            document.getElementById('input-' + id).addEventListener('change', calculateData);
-        });
-
+        document.getElementById('input-algo').addEventListener('change', calculateData);
         document.getElementById('input-axon').addEventListener('change', calculateData);
 
         // Initial Load
