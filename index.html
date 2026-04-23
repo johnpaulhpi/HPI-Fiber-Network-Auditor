@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HPI Axon | Network Capacity Audit</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --panel-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #38bdf8;
+            --axon-color: #10b981;
+            --danger: #ef4444;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .header {
+            width: 100%;
+            max-width: 1200px;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--text-muted);
+            padding-bottom: 1rem;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            color: var(--accent);
+        }
+        .header p { margin: 0.5rem 0 0 0; color: var(--text-muted); }
+        .container {
+            display: flex;
+            gap: 2rem;
+            width: 100%;
+            max-width: 1200px;
+        }
+        .controls {
+            flex: 1;
+            background: var(--panel-bg);
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .dashboard {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        .chart-container {
+            background: var(--panel-bg);
+            padding: 1.5rem;
+            border-radius: 8px;
+            position: relative;
+            height: 400px;
+        }
+        .metrics {
+            display: flex;
+            gap: 1rem;
+        }
+        .metric-card {
+            flex: 1;
+            background: var(--panel-bg);
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin: 0.5rem 0;
+        }
+        .metric-card.axon { border-top: 4px solid var(--axon-color); }
+        .metric-card.danger { border-top: 4px solid var(--danger); }
+        
+        /* Form Elements */
+        .form-group { margin-bottom: 1.5rem; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; }
+        input[type="range"] { width: 100%; margin-top: 0.5rem; }
+        .value-display { float: right; color: var(--accent); font-weight: bold; }
+        
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            margin-top: 2rem;
+            background: rgba(16, 185, 129, 0.1);
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--axon-color);
+        }
+        .toggle-container input {
+            transform: scale(1.5);
+            margin-right: 1rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Fiber Exhaustion & CapEx Audit</h1>
+        <p>Interactive Capacity Forecasting Simulator</p>
+    </div>
+
+    <div class="container">
+        <div class="controls">
+            <h3>Network Parameters</h3>
+            
+            <div class="form-group">
+                <label>Standard Hardware Limit (Gbps) <span class="value-display" id="val-limit">100</span></label>
+                <input type="range" id="input-limit" min="10" max="400" step="10" value="100">
+            </div>
+
+            <div class="form-group">
+                <label>Current Peak Load (Gbps) <span class="value-display" id="val-load">30</span></label>
+                <input type="range" id="input-load" min="5" max="100" step="5" value="30">
+            </div>
+
+            <div class="form-group">
+                <label>Annual Traffic Growth (%) <span class="value-display" id="val-growth">35</span></label>
+                <input type="range" id="input-growth" min="5" max="100" step="5" value="35">
+            </div>
+            
+            <div class="form-group">
+                <label>Est. Trenching Cost ($/Mile) <span class="value-display" id="val-cost">$85,000</span></label>
+                <input type="range" id="input-cost" min="20000" max="250000" step="5000" value="85000">
+            </div>
+
+            <div class="form-group">
+                <label>Distance to Node (Miles) <span class="value-display" id="val-dist">15</span></label>
+                <input type="range" id="input-dist" min="1" max="100" step="1" value="15">
+            </div>
+
+            <div class="toggle-container">
+                <input type="checkbox" id="input-axon">
+                <label for="input-axon" style="margin: 0; font-size: 1.1rem; color: var(--axon-color);">Apply Axon Overlay (Intensity Division Multiplexing)</label>
+            </div>
+        </div>
+
+        <div class="dashboard">
+            <div class="chart-container">
+                <canvas id="capacityChart"></canvas>
+            </div>
+            
+            <div class="metrics">
+                <div class="metric-card danger">
+                    <div style="color: var(--text-muted); font-size: 0.9rem;">Standard CapEx Cliff</div>
+                    <div class="metric-value" style="color: var(--danger);" id="metric-cliff">Year 4</div>
+                    <div style="font-size: 0.8rem;">When current transceivers fail</div>
+                </div>
+                
+                <div class="metric-card axon">
+                    <div style="color: var(--text-muted); font-size: 0.9rem;">Axon Extended Lifespan</div>
+                    <div class="metric-value" style="color: var(--axon-color);" id="metric-extension">+5 Years</div>
+                    <div style="font-size: 0.8rem;">Additional headroom gained</div>
+                </div>
+                
+                <div class="metric-card">
+                    <div style="color: var(--text-muted); font-size: 0.9rem;">CapEx Avoided</div>
+                    <div class="metric-value" style="color: var(--accent);" id="metric-savings">$1.27M</div>
+                    <div style="font-size: 0.8rem;">Immediate infrastructure savings</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let myChart;
+
+        function formatCurrency(num) {
+            if (num >= 1000000) return '$' + (num / 1000000).toFixed(2) + 'M';
+            if (num >= 1000) return '$' + (num / 1000).toFixed(0) + 'k';
+            return '$' + num;
+        }
+
+        function calculateData() {
+            const limit = parseInt(document.getElementById('input-limit').value);
+            const load = parseInt(document.getElementById('input-load').value);
+            const growth = parseInt(document.getElementById('input-growth').value) / 100;
+            const costPerMile = parseInt(document.getElementById('input-cost').value);
+            const dist = parseInt(document.getElementById('input-dist').value);
+            const useAxon = document.getElementById('input-axon').checked;
+
+            // Axon Multiplier (Intensity Division Multiplexing)
+            const axonMultiplier = 4; 
+            const activeLimit = useAxon ? limit * axonMultiplier : limit;
+
+            let labels = [];
+            let demandData = [];
+            let limitData = [];
+            
+            let standardCliffYear = -1;
+            let currentDemand = load;
+
+            for (let i = 0; i <= 10; i++) {
+                labels.push('Year ' + i);
+                demandData.push(currentDemand);
+                limitData.push(activeLimit);
+                
+                if (standardCliffYear === -1 && currentDemand > limit) {
+                    standardCliffYear = i;
+                }
+                
+                currentDemand = currentDemand * (1 + growth);
+            }
+
+            // Update Metrics
+            const savings = costPerMile * dist;
+            document.getElementById('metric-savings').innerText = formatCurrency(savings);
+
+            if (standardCliffYear === -1) {
+                document.getElementById('metric-cliff').innerText = "> 10 Yrs";
+                document.getElementById('metric-extension').innerText = "N/A";
+            } else {
+                document.getElementById('metric-cliff').innerText = "Year " + standardCliffYear;
+                
+                // Calculate Axon cliff
+                let axonCliffYear = -1;
+                let testDemand = load;
+                for (let i = 0; i <= 15; i++) {
+                    if (testDemand > (limit * axonMultiplier)) { axonCliffYear = i; break; }
+                    testDemand = testDemand * (1 + growth);
+                }
+                
+                if (axonCliffYear === -1) {
+                    document.getElementById('metric-extension').innerText = "10+ Years";
+                } else {
+                    document.getElementById('metric-extension').innerText = "+" + (axonCliffYear - standardCliffYear) + " Years";
+                }
+            }
+
+            updateChart(labels, demandData, limitData, activeLimit, useAxon);
+        }
+
+        function updateChart(labels, demand, limits, activeLimit, useAxon) {
+            const ctx = document.getElementById('capacityChart').getContext('2d');
+            
+            if (myChart) { myChart.destroy(); }
+
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Bandwidth Demand (Gbps)',
+                            data: demand,
+                            borderColor: '#ef4444',
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            borderWidth: 3
+                        },
+                        {
+                            label: useAxon ? 'Axon Capacity (Gbps)' : 'Standard Hardware Capacity (Gbps)',
+                            data: limits,
+                            borderColor: useAxon ? '#10b981' : '#94a3b8',
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            borderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#f8fafc' } },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8' },
+                            suggestedMax: activeLimit * 1.2
+                        },
+                        x: {
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Event Listeners for all inputs
+        const inputs = ['limit', 'load', 'growth', 'cost', 'dist'];
+        inputs.forEach(id => {
+            document.getElementById('input-' + id).addEventListener('input', function(e) {
+                let displayVal = e.target.value;
+                if (id === 'cost') displayVal = formatCurrency(displayVal);
+                document.getElementById('val-' + id).innerText = displayVal;
+                calculateData();
+            });
+        });
+
+        document.getElementById('input-axon').addEventListener('change', calculateData);
+
+        // Initial render
+        calculateData();
+    </script>
+</body>
+</html>
