@@ -315,6 +315,7 @@
                         <p class="topology-instruction">Click any fiber link below to set it as the CapEx Bottleneck</p>
                     </div>
                     <div class="preset-btns">
+                        <button id="btn-focus" onclick="toggleFocusMode()" style="border-color: var(--warning); color: var(--warning);">Focus Mode: OFF</button>
                         <button onclick="loadTopology('p2p')" id="btn-p2p" class="active">P2P (Long Haul)</button>
                         <button onclick="loadTopology('ring')" id="btn-ring">Metro Ring</button>
                         <button onclick="loadTopology('star')" id="btn-star">Star (PON)</button>
@@ -667,6 +668,8 @@
                     
                     // Recalculate which will trigger updateTopologyVisuals
                     calculateData();
+                    
+                    applyFocusMode();
                 }
             });
 
@@ -720,12 +723,13 @@
                         id: edge.id,
                         color: { color: '#475569', highlight: '#94a3b8' },
                         width: 2,
-                        label: '',
+                        label: undefined,
                         dashes: false
                     });
                 }
             });
             edgesDataset.update(updates);
+            applyFocusMode();
         }
 
         // --- Event Listeners ---
@@ -743,6 +747,50 @@
         });
 
         document.getElementById('input-algo').addEventListener('change', calculateData);
+
+        // --- NEW: FOCUS MODE LOGIC ---
+        let focusModeActive = false;
+
+        function toggleFocusMode() {
+            focusModeActive = !focusModeActive;
+            const btn = document.getElementById('btn-focus');
+            if (focusModeActive) {
+                btn.innerText = 'Focus Mode: ON';
+                btn.style.background = 'var(--warning)';
+                btn.style.color = '#000';
+            } else {
+                btn.innerText = 'Focus Mode: OFF';
+                btn.style.background = 'transparent';
+                btn.style.color = 'var(--warning)';
+            }
+            applyFocusMode();
+        }
+
+        function applyFocusMode() {
+            const allNodes = nodesDataset.get();
+            const allEdges = edgesDataset.get();
+            const activeEdge = allEdges.find(e => e.isBottleneck);
+            const originalNodes = topologies[currentTopology].nodes;
+
+            const nodeUpdates = [];
+            allNodes.forEach(n => {
+                const origNode = originalNodes.find(on => on.id === n.id);
+                if (!origNode) return;
+
+                // If Focus Mode is ON and we have a selected bottleneck
+                if (focusModeActive && activeEdge) {
+                    if (n.id === activeEdge.from || n.id === activeEdge.to) {
+                        nodeUpdates.push({ id: n.id, label: origNode.label }); // Keep text for active nodes
+                    } else {
+                        nodeUpdates.push({ id: n.id, label: ' ' }); // Hide text (Vis.js requires a space, not empty string)
+                    }
+                } else {
+                    // Focus Mode OFF, restore all text
+                    nodeUpdates.push({ id: n.id, label: origNode.label }); 
+                }
+            });
+            nodesDataset.update(nodeUpdates);
+        }
 
         // Initial Load
         setTimeout(() => {
