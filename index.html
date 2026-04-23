@@ -7,6 +7,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    
     <style>
         :root {
             --bg-dark: #0f172a;
@@ -61,17 +63,16 @@
         }
         .control-group h3 { margin: 0 0 1.2rem 0; font-size: 1.1rem; color: var(--accent); border-bottom: 1px solid var(--panel-light); padding-bottom: 0.5rem; text-transform: uppercase; font-weight: 600; letter-spacing: 1px;}
         
-        /* New Axon Config Group */
         .axon-config-panel {
             background: linear-gradient(180deg, var(--panel-bg) 0%, rgba(16, 185, 129, 0.05) 100%);
             border: 1px solid var(--axon-color);
-            display: none; /* Hidden by default */
+            display: none;
         }
         .axon-config-panel h3 { color: var(--axon-color); border-bottom: 1px solid rgba(16, 185, 129, 0.3); }
 
-        .dashboard { flex: 1; display: flex; flex-direction: column; gap: 1.5rem; }
+        .dashboard { flex: 1; display: flex; flex-direction: column; gap: 1.5rem; min-width: 0; }
         
-        .chart-container { background: var(--panel-bg); padding: 1.5rem; border-radius: 8px; height: 480px; border: 1px solid var(--panel-light); }
+        .chart-container { background: var(--panel-bg); padding: 1.5rem; border-radius: 8px; height: 400px; border: 1px solid var(--panel-light); }
         
         /* Form Elements */
         .form-group { margin-bottom: 1.2rem; }
@@ -86,17 +87,7 @@
         
         /* Metrics Layout */
         .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
-        
-        .metric-card {
-            background: var(--panel-bg);
-            padding: 1.5rem;
-            border-radius: 8px;
-            border: 1px solid var(--panel-light);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-        
+        .metric-card { background: var(--panel-bg); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--panel-light); display: flex; flex-direction: column; justify-content: center; }
         .metric-card .title { color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem;}
         .metric-value { font-size: 2.2rem; font-weight: bold; line-height: 1; margin-bottom: 0.5rem; }
         .metric-card .subtitle { font-size: 0.85rem; color: var(--text-muted); }
@@ -105,37 +96,33 @@
         .status-pass { background: var(--axon-glow); color: var(--axon-color); border: 1px solid var(--axon-color); }
         .status-fail { background: var(--danger-glow); color: var(--danger); border: 1px solid var(--danger); }
 
-        /* Axon UI */
         .metric-card.axon-active { border-color: var(--axon-color); background: linear-gradient(180deg, var(--panel-bg) 0%, rgba(16, 185, 129, 0.05) 100%); }
         .metric-card.axon-active .metric-value { color: var(--axon-color); }
         
-        .toggle-container {
-            margin-top: 0;
-            background: var(--axon-glow);
-            padding: 1.5rem;
-            border-radius: 8px;
-            border: 1px solid var(--axon-color);
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
+        .toggle-container { margin-top: 0; background: var(--axon-glow); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--axon-color); display: flex; align-items: center; cursor: pointer; transition: all 0.2s; }
         .toggle-container:hover { background: rgba(16, 185, 129, 0.25); }
         .toggle-container input { transform: scale(1.6); margin-right: 1.2rem; cursor: pointer; accent-color: var(--axon-color);}
         .toggle-label { margin: 0; font-size: 1.1rem; font-weight: bold; color: var(--axon-color); cursor: pointer; text-transform: uppercase; letter-spacing: 1px;}
 
-        /* Math Explainer */
-        .math-explainer {
-            margin-top: 0.5rem;
-            padding: 1.2rem;
-            background: #000;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            border-left: 3px solid var(--warning);
-            line-height: 1.5;
-        }
+        .math-explainer { margin-top: 0.5rem; padding: 1.2rem; background: #000; border-radius: 8px; font-size: 0.85rem; color: var(--text-muted); border-left: 3px solid var(--warning); line-height: 1.5; }
         .math-explainer strong { color: var(--text-main); font-size: 0.95rem; }
+
+        /* Topology Visualizer Styles */
+        .topology-wrapper { background: var(--panel-bg); border-radius: 8px; border: 1px solid var(--panel-light); margin-top: 0; display: flex; flex-direction: column;}
+        .topology-header { display: flex; justify-content: space-between; align-items: center; padding: 1.5rem; border-bottom: 1px solid var(--panel-light); }
+        .topology-header h3 { margin: 0; color: var(--text-main); font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .preset-btns { display: flex; gap: 0.5rem; }
+        .preset-btns button { background: var(--bg-dark); color: var(--text-muted); border: 1px solid var(--panel-light); padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-weight: 600; transition: all 0.2s;}
+        .preset-btns button:hover { background: var(--panel-light); color: var(--text-main); }
+        .preset-btns button.active { background: var(--accent); color: var(--bg-dark); border-color: var(--accent); }
+        
+        #network-map { height: 450px; width: 100%; background: #0b1120; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; }
+        
+        /* Vis.js UI overrides */
+        .vis-network:focus { outline: none; }
+        .vis-manipulation { background: rgba(30, 41, 59, 0.9) !important; border-bottom: 1px solid var(--panel-light) !important; color: var(--text-main) !important; }
+        .vis-button:hover { box-shadow: 0 0 5px var(--accent) !important; }
 
     </style>
 </head>
@@ -144,7 +131,7 @@
     <div class="header">
         <div>
             <h1>NaaS Conversion & Infrastructure Audit</h1>
-            <p>Advanced Capacity Forecasting & Optical Link Budget Analysis</p>
+            <p>Advanced Capacity Forecasting & Network Architecture Simulation</p>
         </div>
         <div class="branding">Hansen Photonics Inc.</div>
     </div>
@@ -318,11 +305,27 @@
                 <canvas id="capacityChart"></canvas>
             </div>
             
+            <div class="topology-wrapper">
+                <div class="topology-header">
+                    <h3>Interactive Network Architecture Simulator</h3>
+                    <div class="preset-btns">
+                        <button onclick="loadTopology('p2p')" id="btn-p2p" class="active">P2P (Long Haul)</button>
+                        <button onclick="loadTopology('ring')" id="btn-ring">Metro Ring</button>
+                        <button onclick="loadTopology('star')" id="btn-star">Star (PON)</button>
+                        <button onclick="loadTopology('tree')" id="btn-tree">Hierarchical</button>
+                        <button onclick="loadTopology('mesh')" id="btn-mesh">Core Mesh</button>
+                    </div>
+                </div>
+                <div id="network-map"></div>
+            </div>
+
         </div>
     </div>
 
     <script>
         let myChart;
+        let networkMap;
+        let currentTopology = 'p2p';
 
         function formatCurrency(num) {
             if (num >= 1000000) return '$' + (num / 1000000).toFixed(2) + 'M';
@@ -343,7 +346,6 @@
             const panel = document.getElementById('axon-settings-panel');
             if(e.target.checked) {
                 panel.style.display = 'block';
-                // Trigger MathJax re-render in case layout shift affected it
                 if(window.MathJax) MathJax.typesetPromise();
             } else {
                 panel.style.display = 'none';
@@ -392,6 +394,9 @@
             // State
             const useAxon = document.getElementById('input-axon').checked;
             const axonTotalCapacity = channels * axonSpeedPerChannel; 
+
+            // Update Network Topology Visuals based on Axon State
+            updateTopologyVisuals(useAxon, limitGbps, axonTotalCapacity);
 
             // --- Optical Link Math ---
             const spliceLossTotal = splices * 0.15; 
@@ -537,13 +542,7 @@
                     interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: { position: 'bottom', labels: { color: '#f8fafc', padding: 20, font: {size: 13} } },
-                        tooltip: {
-                            backgroundColor: '#1e293b',
-                            titleColor: '#38bdf8',
-                            borderColor: '#334155',
-                            borderWidth: 1,
-                            padding: 12
-                        }
+                        tooltip: { backgroundColor: '#1e293b', titleColor: '#38bdf8', borderColor: '#334155', borderWidth: 1, padding: 12 }
                     },
                     scales: {
                         y: {
@@ -562,7 +561,142 @@
             });
         }
 
-        // Event Listeners
+        // --- NEW: VIS.JS TOPOLOGY ENGINE ---
+        
+        let nodesDataset = new vis.DataSet([]);
+        let edgesDataset = new vis.DataSet([]);
+
+        const topologies = {
+            p2p: {
+                nodes: [
+                    { id: 1, label: 'Core Router\n(Seattle)' },
+                    { id: 2, label: 'Edge Node\n(Tacoma)' }
+                ],
+                edges: [ { from: 1, to: 2, id: 'e1', isBottleneck: true, length: 300 } ]
+            },
+            ring: {
+                nodes: [
+                    { id: 1, label: 'Core 1' }, { id: 2, label: 'Agg 1' }, { id: 3, label: 'Agg 2' }, { id: 4, label: 'Agg 3' }, { id: 5, label: 'Core 2' }
+                ],
+                edges: [
+                    { from: 1, to: 2, id: 'e1' }, { from: 2, to: 3, id: 'e2', isBottleneck: true }, { from: 3, to: 4, id: 'e3' }, { from: 4, to: 5, id: 'e4' }, { from: 5, to: 1, id: 'e5' }
+                ]
+            },
+            star: {
+                nodes: [
+                    { id: 1, label: 'OLT Hub', font: { size: 20 } },
+                    { id: 2, label: 'Splitter A' }, { id: 3, label: 'Splitter B' }, { id: 4, label: 'Splitter C' }, { id: 5, label: 'Remote Node' }
+                ],
+                edges: [
+                    { from: 1, to: 2, id: 'e1' }, { from: 1, to: 3, id: 'e2' }, { from: 1, to: 4, id: 'e3' }, { from: 1, to: 5, id: 'e4', isBottleneck: true }
+                ]
+            },
+            tree: {
+                nodes: [
+                    { id: 1, label: 'Core', font: { size: 20 } },
+                    { id: 2, label: 'Dist 1' }, { id: 3, label: 'Dist 2' },
+                    { id: 4, label: 'Access A' }, { id: 5, label: 'Access B' }, { id: 6, label: 'Access C' }
+                ],
+                edges: [
+                    { from: 1, to: 2, id: 'e1', isBottleneck: true }, { from: 1, to: 3, id: 'e2' },
+                    { from: 2, to: 4, id: 'e3' }, { from: 2, to: 5, id: 'e4' }, { from: 3, to: 6, id: 'e5' }
+                ]
+            },
+            mesh: {
+                nodes: [
+                    { id: 1, label: 'Node Alpha' }, { id: 2, label: 'Node Beta' }, { id: 3, label: 'Node Gamma' }, { id: 4, label: 'Node Delta' }
+                ],
+                edges: [
+                    { from: 1, to: 2, id: 'e1' }, { from: 1, to: 3, id: 'e2' }, { from: 1, to: 4, id: 'e3', isBottleneck: true },
+                    { from: 2, to: 3, id: 'e4' }, { from: 2, to: 4, id: 'e5' }, { from: 3, to: 4, id: 'e6' }
+                ]
+            }
+        };
+
+        function initNetwork() {
+            const container = document.getElementById('network-map');
+            const data = { nodes: nodesDataset, edges: edgesDataset };
+            const options = {
+                physics: { stabilization: false, barnesHut: { springLength: 150 } },
+                manipulation: { 
+                    enabled: true,
+                    addNode: function(nodeData, callback) {
+                        nodeData.label = 'New Node';
+                        callback(nodeData);
+                    }
+                },
+                nodes: {
+                    shape: 'dot', size: 18,
+                    font: { color: '#f8fafc', face: '-apple-system', size: 14 },
+                    color: { background: '#38bdf8', border: '#0ea5e9', highlight: { background: '#10b981', border: '#059669' } },
+                    borderWidth: 2
+                },
+                edges: {
+                    width: 2, color: { color: '#475569', highlight: '#94a3b8' },
+                    font: { color: '#f8fafc', strokeWidth: 0, align: 'top', size: 12 },
+                    smooth: { type: 'continuous' }
+                }
+            };
+            networkMap = new vis.Network(container, data, options);
+            loadTopology('p2p');
+        }
+
+        function loadTopology(type) {
+            currentTopology = type;
+            
+            // UI Button states
+            document.querySelectorAll('.preset-btns button').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-' + type).classList.add('active');
+
+            const topo = topologies[type];
+            nodesDataset.clear();
+            edgesDataset.clear();
+            nodesDataset.add(topo.nodes);
+            edgesDataset.add(topo.edges);
+            
+            // Re-apply bottleneck visuals
+            calculateData(); 
+        }
+
+        function updateTopologyVisuals(useAxon, standardCap, axonCap) {
+            const allEdges = edgesDataset.get();
+            const updates = [];
+
+            allEdges.forEach(edge => {
+                if (edge.isBottleneck) {
+                    if (useAxon) {
+                        updates.push({
+                            id: edge.id,
+                            color: { color: '#10b981', highlight: '#34d399' },
+                            width: 5,
+                            label: `Axon NaaS Active\n(${axonCap}G Capacity)`,
+                            font: { color: '#10b981', background: '#0f172a' },
+                            dashes: false
+                        });
+                    } else {
+                        updates.push({
+                            id: edge.id,
+                            color: { color: '#ef4444', highlight: '#f87171' },
+                            width: 4,
+                            label: `CapEx CLIFF\nLimit: ${standardCap}G`,
+                            font: { color: '#ef4444', background: '#0f172a' },
+                            dashes: [5, 5]
+                        });
+                    }
+                } else {
+                    updates.push({
+                        id: edge.id,
+                        color: { color: '#475569', highlight: '#94a3b8' },
+                        width: 2,
+                        label: '',
+                        dashes: false
+                    });
+                }
+            });
+            edgesDataset.update(updates);
+        }
+
+        // --- Event Listeners ---
         const rangeInputs = ['load', 'max', 'dist', 'atten', 'splices', 'delay', 'labor', 'fiber', 'channels', 'axonspeed', 'axonhw', 'axonmo'];
         rangeInputs.forEach(id => {
             document.getElementById('input-' + id).addEventListener('input', function(e) {
@@ -579,7 +713,11 @@
         document.getElementById('input-algo').addEventListener('change', calculateData);
 
         // Initial Load
-        setTimeout(calculateData, 100);
+        setTimeout(() => {
+            initNetwork();
+            calculateData();
+        }, 100);
+
     </script>
 </body>
 </html>
