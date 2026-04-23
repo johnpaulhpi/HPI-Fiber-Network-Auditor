@@ -668,8 +668,6 @@
                     
                     // Recalculate which will trigger updateTopologyVisuals
                     calculateData();
-                    
-                    applyFocusMode();
                 }
             });
 
@@ -721,9 +719,9 @@
                 } else {
                     updates.push({
                         id: edge.id,
-                        color: { color: '#475569', highlight: '#94a3b8' },
+                        color: { color: focusModeActive ? '#1e293b' : '#475569', highlight: '#94a3b8' },
                         width: 2,
-                        label: undefined,
+                        label: ' ', // <--- THIS FIXES THE GHOST TEXT ON EDGES
                         dashes: false
                     });
                 }
@@ -780,13 +778,29 @@
                 // If Focus Mode is ON and we have a selected bottleneck
                 if (focusModeActive && activeEdge) {
                     if (n.id === activeEdge.from || n.id === activeEdge.to) {
-                        nodeUpdates.push({ id: n.id, label: origNode.label }); // Keep text for active nodes
+                        nodeUpdates.push({ 
+                            id: n.id, 
+                            label: origNode.label, 
+                            font: { color: '#f8fafc' },
+                            color: { background: '#38bdf8', border: '#0ea5e9' } 
+                        }); 
                     } else {
-                        nodeUpdates.push({ id: n.id, label: ' ' }); // Hide text (Vis.js requires a space, not empty string)
+                        // Focus Mode: Dim the node to dark grey, but keep the label
+                        nodeUpdates.push({ 
+                            id: n.id, 
+                            label: origNode.label, 
+                            font: { color: '#475569' },
+                            color: { background: '#0f172a', border: '#1e293b' } 
+                        }); 
                     }
                 } else {
-                    // Focus Mode OFF, restore all text
-                    nodeUpdates.push({ id: n.id, label: origNode.label }); 
+                    // Focus Mode OFF, restore all normal colors
+                    nodeUpdates.push({ 
+                        id: n.id, 
+                        label: origNode.label, 
+                        font: { color: '#f8fafc' },
+                        color: { background: '#38bdf8', border: '#0ea5e9' } 
+                    }); 
                 }
             });
             nodesDataset.update(nodeUpdates);
